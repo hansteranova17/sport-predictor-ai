@@ -1,1 +1,168 @@
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>SPORT PREDICTOR AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:#f4f7fb;font-family:Arial,sans-serif;padding:16px}
+.container{max-width:650px;margin:auto}
+header{text-align:center;padding:20px 5px}
+h1{color:#42d392;font-size:27px;margin:5px}
+.sub{color:#aab6c8;font-size:13px}
+.card{background:#1b293c;border:1px solid #30415a;border-radius:15px;padding:17px;margin:14px 0}
+label{display:block;margin:13px 0 6px;color:#cbd5e1;font-size:14px}
+input,select{width:100%;padding:13px;border-radius:9px;border:1px solid #40516a;background:#101827;color:white;font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{width:100%;padding:15px;background:#22c783;color:#071b13;font-weight:bold;border:0;border-radius:10px;font-size:16px;margin-top:18px}
+.result{display:none}
+.big{text-align:center;font-size:24px;font-weight:bold;color:#42d392;padding:12px}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #34445a}
+.muted{color:#aab6c8;font-size:12px;line-height:1.5}
+.score{padding:10px;background:#26374e;border-radius:8px;margin:7px 0;display:flex;justify-content:space-between}
+.warning{color:#f5c56b}
+footer{text-align:center;color:#8998ad;font-size:12px;padding:20px}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>⚡ SPORT PREDICTOR AI</h1>
+<div class="sub">Simulateur intelligent de pronostics sportifs</div>
+</header>
+
+<div class="card">
+<h3>🏆 Configuration du match</h3>
+<label>Sport</label>
+<select id="sport">
+<option value="football">Football</option>
+<option value="hockey">Hockey sur glace</option>
+</select>
+
+<div class="grid">
+<div><label>Équipe 1</label><input id="team1" value="Équipe A"></div>
+<div><label>Équipe 2</label><input id="team2" value="Équipe B"></div>
+</div>
+
+<h3>📊 Statistiques récentes</h3>
+<p class="muted">Entre les moyennes par match des 5 à 10 dernières rencontres.</p>
+
+<div class="grid">
+<div><label>Buts marqués équipe 1</label><input id="gf1" type="number" min="0" max="15" step=".1" value="1.8"></div>
+<div><label>Buts encaissés équipe 1</label><input id="ga1" type="number" min="0" max="15" step=".1" value="1.1"></div>
+<div><label>Buts marqués équipe 2</label><input id="gf2" type="number" min="0" max="15" step=".1" value="1.3"></div>
+<div><label>Buts encaissés équipe 2</label><input id="ga2" type="number" min="0" max="15" step=".1" value="1.5"></div>
+</div>
+
+<div class="grid">
+<div><label>Forme équipe 1 (0 à 100)</label><input id="form1" type="number" min="0" max="100" value="75"></div>
+<div><label>Forme équipe 2 (0 à 100)</label><input id="form2" type="number" min="0" max="100" value="60"></div>
+</div>
+
+<button onclick="analyze()">🚀 LANCER 10 000 SIMULATIONS</button>
+</div>
+
+<div class="card result" id="results">
+<h3>📈 Résultats de l'analyse</h3>
+<div class="big" id="winner"></div>
+<div class="stat"><span>Victoire équipe 1</span><b id="p1"></b></div>
+<div class="stat"><span>Match nul</span><b id="px"></b></div>
+<div class="stat"><span>Victoire équipe 2</span><b id="p2"></b></div>
+
+<h3>⚽ Estimation des buts</h3>
+<div class="stat"><span>Buts attendus équipe 1</span><b id="e1"></b></div>
+<div class="stat"><span>Buts attendus équipe 2</span><b id="e2"></b></div>
+<div class="stat"><span>Total moyen</span><b id="total"></b></div>
+
+<h3>🎯 Scores exacts les plus simulés</h3>
+<div id="scores"></div>
+
+<h3>📌 Marchés de buts</h3>
+<div class="stat"><span>Total 1 : plus de 0,5</span><b id="t1"></b></div>
+<div class="stat"><span>Total 2 : plus de 0,5</span><b id="t2"></b></div>
+<div class="stat"><span>Total match : plus de 2,5</span><b id="over25"></b></div>
+<div class="stat"><span>Total match : moins de 2,5</span><b id="under25"></b></div>
+<p class="muted warning">Attention : ces chiffres sont des estimations mathématiques fondées sur les statistiques saisies. Ils ne garantissent jamais le résultat réel.</p>
+</div>
+
+<footer>SPORT PREDICTOR AI • Simulation locale • Sans base de données</footer>
+</div>
+
+<script>
+function poisson(lambda){
+ let L=Math.exp(-lambda),k=0,p=1;
+ do{k++;p*=Math.random()}while(p>L);
+ return k-1;
+}
+
+function analyze(){
+ const val=id=>Number(document.getElementById(id).value);
+ const name1=document.getElementById('team1').value||'Équipe 1';
+ const name2=document.getElementById('team2').value||'Équipe 2';
+ const ids=['gf1','ga1','gf2','ga2','form1','form2'];
+
+ for(const id of ids){
+  const x=val(id);
+  if(!Number.isFinite(x)||x<0||(id.startsWith('form')&&x>100)){
+   alert('Vérifie les statistiques saisies.');
+   return;
+  }
+ }
+
+ const sport=document.getElementById('sport').value;
+ const cap=sport==='hockey'?12:10;
+
+ const l1=Math.min(cap,Math.max(.05,((val('gf1')+val('ga2'))/2)*(0.85+val('form1')/250)));
+ const l2=Math.min(cap,Math.max(.05,((val('gf2')+val('ga1'))/2)*(0.85+val('form2')/250)));
+
+ const N=10000;
+ let w1=0,draw=0,w2=0,o25=0;
+ let g1=0,g2=0,one=0,two=0;
+ const scores={};
+
+ for(let i=0;i<N;i++){
+  const a=poisson(l1),b=poisson(l2);
+  g1+=a;g2+=b;
+  if(a>b)w1++;
+  else if(a===b)draw++;
+  else w2++;
+  if(a+b>2.5)o25++;
+  if(a>0)one++;
+  if(b>0)two++;
+  const key=a+' - '+b;
+  scores[key]=(scores[key]||0)+1;
+ }
+
+ const pct=n=>(100*n/N).toFixed(1)+'%';
+ const avg1=g1/N,avg2=g2/N;
+
+ document.getElementById('winner').textContent=
+  w1>w2&&w1>draw?'Avantage : '+name1:
+  w2>w1&&w2>draw?'Avantage : '+name2:'Match équilibré';
+
+ document.getElementById('p1').textContent=pct(w1);
+ document.getElementById('px').textContent=pct(draw);
+ document.getElementById('p2').textContent=pct(w2);
+ document.getElementById('e1').textContent=avg1.toFixed(2);
+ document.getElementById('e2').textContent=avg2.toFixed(2);
+ document.getElementById('total').textContent=(avg1+avg2).toFixed(2);
+ document.getElementById('t1').textContent=pct(one);
+ document.getElementById('t2').textContent=pct(two);
+ document.getElementById('over25').textContent=pct(o25);
+ document.getElementById('under25').textContent=pct(N-o25);
+
+ const top=Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ document.getElementById('scores').innerHTML=top.map(x=>
+  '<div class="score"><b>'+x[0]+'</b><span>'+pct(x[1])+'</span></div>'
+ ).join('');
+
+ document.getElementById('results').style.display='block';
+ document.getElementById('results').scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+  </html>
+
